@@ -7,10 +7,12 @@ NIMA is released under the MIT license. See LICENSE for the fill license text.
 """
 
 import os
+import pickle
 
 import pandas as pd
 from PIL import Image
 
+import cv2
 import torch
 from torch.utils import data
 import torchvision.transforms as transforms
@@ -43,6 +45,28 @@ class AVADataset(data.Dataset):
         if self.transform:
             sample['image'] = self.transform(sample['image'])
 
+        return sample
+
+
+class HKPHIDataset(data.Dataset):
+    def __init__(self, csv_file, root_dir, pkl_file, transform=None):
+        annotations = pd.read_csv(csv_file).sort_values(by='name')
+        file_list = pd.read_pickle(pkl_file).sort_values(by='image')
+        self.df = pd.concat([annotations, file_list], axis=1)
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        path = self.df['image'].iloc[idx]
+        image = Image.open(path).convert('RGB')
+        annotations = self.df.iloc[idx, 2:12].to_numpy()
+        annotations = annotations.astype('float').reshape(-1, 1)
+        sample = {'img_id': path, 'image': image, 'annotations': annotations}
+        if self.transform:
+            sample['image'] = self.transform(sample['image'])
         return sample
 
 
